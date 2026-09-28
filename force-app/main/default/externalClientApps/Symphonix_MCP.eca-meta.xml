@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExternalClientApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <contactEmail>balaji.rajendran@q2.com</contactEmail>
+    <description>Connect app used to connect with product MCP</description>
+    <distributionState>Packaged</distributionState>
+    <isProtected>false</isProtected>
+    <label>Symphonix MCP</label>
+    <orgScopedExternalApp>00DHo0000017nfN:Symphonix_MCP</orgScopedExternalApp>
+</ExternalClientApplication>
