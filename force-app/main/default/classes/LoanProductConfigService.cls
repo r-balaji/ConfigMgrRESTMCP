@@ -24,10 +24,24 @@ global with sharing class LoanProductConfigService {
     private static Map<String, List<String>> fieldsCache = new Map<String, List<String>>();
 
     /**
+     * Allows the dependency-free 2GP validation org to exercise the complete
+     * dynamic query/deploy pipeline with a standard object. Production code
+     * always uses Loan_Product__c; Apex tests may substitute Account.
+     */
+    @TestVisible
+    private static String loanProductObjectOverride;
+
+    private static String loanProductObjectName() {
+        return Test.isRunningTest() && String.isNotBlank(loanProductObjectOverride)
+            ? loanProductObjectOverride
+            : 'Loan_Product__c';
+    }
+
+    /**
      * Active namespaces for prefix probing. Detected once per request by
      * scanning the global describe for the package's signature objects
      * (Loan_Product__c → core lending package; Holiday_Treatment_Setup__c →
-     * clcommon). Falls back to the historical defaults if detection fails.
+     * Common).
      *
      * The value is the prefix INCLUDING the trailing double-underscore,
      * e.g. `loan__` or `w22loan__`.
@@ -176,10 +190,12 @@ global with sharing class LoanProductConfigService {
         Map<String, Object> out = new Map<String, Object>();
         out.put('requestedId', productId);
 
+        String productObject = loanProductObjectName();
+
         // What the schema looks like from this Apex's perspective.
         // Use describeOnce so we don't break compilation in orgs where the
         // package namespace differs (Loan_Product__c → <ns>__Loan_Product__c).
-        Schema.DescribeSObjectResult productDr = describeOnce('Loan_Product__c');
+        Schema.DescribeSObjectResult productDr = describeOnce(productObject);
         Map<String, Schema.SObjectField> fieldMap = productDr == null
             ? new Map<String, Schema.SObjectField>()
             : productDr.fields.getMap();
@@ -193,7 +209,7 @@ global with sharing class LoanProductConfigService {
         out.put('sampleFieldKeys', sampleKeys);
 
         // Resolved query field list (every accessible field, system fields stripped).
-        List<String> resolved = getQueryableFields('Loan_Product__c');
+        List<String> resolved = getQueryableFields(productObject);
         out.put('resolvedFieldsForQuery', resolved);
 
         // Build and run the SOQL exactly as buildProductGraph would.
@@ -201,7 +217,7 @@ global with sharing class LoanProductConfigService {
         try {
             Id pid = (Id) productId;
             soql = 'SELECT ' + String.join(resolved, ', ') +
-                   ' FROM ' + resolveObjectName('Loan_Product__c') + ' WHERE Id = :pid LIMIT 1';
+                   ' FROM ' + resolveObjectName(productObject) + ' WHERE Id = :pid LIMIT 1';
             out.put('soql', soql);
             List<SObject> recs = Database.query(soql);
             if (recs.isEmpty()) {
@@ -322,12 +338,24 @@ global with sharing class LoanProductConfigService {
     // ─── /products: lightweight selection list ──────────────────────────────────
 
     public static Map<String, Object> listProducts() {
+        String productObject = loanProductObjectName();
+        Schema.DescribeSObjectResult productDr = describeOnce(productObject);
+        if (productDr == null) {
+            return errorResponse(
+                'Loan_Product__c is not available. Install the applicable lending package before using this service.'
+            );
+        }
         List<Map<String, Object>> products = new List<Map<String, Object>>();
-        String productObj  = resolveObjectName('Loan_Product__c');
-        String typeField   = resolveFieldOnObject('Loan_Product__c', 'Loan_Product_Type__c');
-        String statusField = resolveFieldOnObject('Loan_Product__c', 'Status__c');
+        String productObj  = resolveObjectName(productObject);
+        String typeField = resolveFieldName(
+            productDr.fields.getMap(), 'Loan_Product_Type__c'
+        );
+        String statusField = resolveFieldName(productDr.fields.getMap(), 'Status__c');
+        List<String> selectionFields = new List<String>{ 'Id', 'Name' };
+        if (typeField != null) selectionFields.add(typeField);
+        if (statusField != null) selectionFields.add(statusField);
         for (SObject rec : Database.query(
-                'SELECT Id, Name, ' + typeField + ', ' + statusField +
+                'SELECT ' + String.join(selectionFields, ', ') +
                 ' FROM ' + productObj + ' ORDER BY Name')) {
             Map<String, Object> idx = indexPopulated(rec.getPopulatedFieldsAsMap());
             Map<String, Object> row = new Map<String, Object>();
@@ -365,12 +393,18 @@ global with sharing class LoanProductConfigService {
                 'errorMessage' => 'Invalid product id: ' + productId
             };
         }
+        String productObject = loanProductObjectName();
+        if (describeOnce(productObject) == null) {
+            return errorResponse(
+                'Loan_Product__c is not available. Install the applicable lending package before using this service.'
+            );
+        }
 
         // 1. Fetch the loan product with every accessible field (system fields stripped).
-        List<String> productFields = getQueryableFields('Loan_Product__c');
+        List<String> productFields = getQueryableFields(productObject);
         List<SObject> products = Database.query(
             'SELECT ' + String.join(productFields, ', ') +
-            ' FROM ' + resolveObjectName('Loan_Product__c') + ' WHERE Id = :pid LIMIT 1'
+            ' FROM ' + resolveObjectName(productObject) + ' WHERE Id = :pid LIMIT 1'
         );
         if (products.isEmpty()) {
             return new Map<String, Object>{
@@ -407,7 +441,8 @@ global with sharing class LoanProductConfigService {
 
         // 4. Dynamically fetch every custom child relationship of Loan_Product__c
         //    keyed by the lookup field that points back to this product.
-        Map<String, List<Map<String, Object>>> children = fetchProductChildren(pid);
+        Map<String, List<Map<String, Object>>> children =
+            fetchProductChildren(productObject, pid);
 
         // 5. Resolve Fee__c records referenced by Fee_Junction__c children.
         Map<String, Map<String, Object>> fees = resolveFees(feeSetFetch.feeIds);
@@ -498,6 +533,7 @@ global with sharing class LoanProductConfigService {
      * snapshot output consistent and aligned with our static label dictionary.
      * System / audit fields (CreatedDate, LastModifiedDate, etc.) are skipped.
      */
+    @TestVisible
     private static List<String> getQueryableFields(String objectName) {
         if (fieldsCache.containsKey(objectName)) return fieldsCache.get(objectName);
         Schema.DescribeSObjectResult dr = describeOnce(objectName);
@@ -598,6 +634,7 @@ global with sharing class LoanProductConfigService {
         return idx;
     }
 
+    @TestVisible
     private static Map<String, Object> sobjectToMap(SObject record, List<String> fields) {
         Map<String, Object> populated = record.getPopulatedFieldsAsMap();
         Map<String, Object> idx       = indexPopulated(populated);
@@ -653,9 +690,11 @@ global with sharing class LoanProductConfigService {
      * objects (CHILD_DENYLIST), and anything ending in transactional / interface
      * naming patterns so borrower data never lands in a config snapshot.
      */
-    private static Map<String, List<Map<String, Object>>> fetchProductChildren(Id pid) {
+    private static Map<String, List<Map<String, Object>>> fetchProductChildren(
+            String productObject,
+            Id pid) {
         Map<String, List<Map<String, Object>>> out = new Map<String, List<Map<String, Object>>>();
-        Schema.DescribeSObjectResult dr = describeOnce('Loan_Product__c');
+        Schema.DescribeSObjectResult dr = describeOnce(productObject);
         if (dr == null) return out;
 
         for (Schema.ChildRelationship rel : dr.getChildRelationships()) {
@@ -711,6 +750,7 @@ global with sharing class LoanProductConfigService {
     }
 
     /** Bulk-queries an object by Id set; returns reshaped records. Empty set → no SOQL. */
+    @TestVisible
     private static List<Map<String, Object>> queryByIds(String objectName, Set<Id> ids) {
         List<Map<String, Object>> out = new List<Map<String, Object>>();
         if (ids == null || ids.isEmpty()) return out;
@@ -874,6 +914,7 @@ global with sharing class LoanProductConfigService {
      *          'Floating_Rate_Index__c', ids) → each Floating_Rate_Index record
      *          carries { ..., 'Floating_Rate__c': [child rows] }.
      */
+    @TestVisible
     private static List<Map<String, Object>> fetchParentWithChildren(
             String parentObj,
             String childObj,
@@ -1119,6 +1160,7 @@ global with sharing class LoanProductConfigService {
      * Bulk-fetches `target` records by Id and merges them into
      * `relatedObjects[target]`, skipping any Ids already present.
      */
+    @TestVisible
     private static void mergeFetchedRecords(
             Map<String, List<Map<String, Object>>> relatedObjects,
             String target,
@@ -1266,6 +1308,12 @@ global with sharing class LoanProductConfigService {
         if (productFields == null) {
             return errorResponse('Payload missing loanProduct.fields');
         }
+        String productObject = loanProductObjectName();
+        if (describeOnce(productObject) == null) {
+            return errorResponse(
+                'Loan_Product__c is not available. Install the applicable lending package before using this service.'
+            );
+        }
 
         // `JSON.deserializeUntyped` returns Map<String,Object> / List<Object>.
         // Apex disallows direct casts to deeper generic shapes; we have to
@@ -1316,7 +1364,9 @@ global with sharing class LoanProductConfigService {
             if (editedName != null && !productFields.containsKey('Name')) {
                 productFields.put('Name', editedName);
             }
-            SObject product = buildSObject('Loan_Product__c', productFields, idRemap, PRODUCT_LOOKUP_FIELDS);
+            SObject product = buildSObject(
+                productObject, productFields, idRemap, PRODUCT_LOOKUP_FIELDS
+            );
             insert product;
             increment(createdCounts, 'Loan_Product__c');
             String newProductId = String.valueOf(product.Id);
@@ -1391,6 +1441,7 @@ global with sharing class LoanProductConfigService {
     }
 
     /** Pulls the records for an object out of related/fees buckets. */
+    @TestVisible
     private static List<Map<String, Object>> collectReferenceRecords(
             String objName,
             Map<String, List<Map<String, Object>>> related,
@@ -1435,6 +1486,7 @@ global with sharing class LoanProductConfigService {
      * itself was inserted (newly-created path); for reused parents the
      * existing children are kept as-is.
      */
+    @TestVisible
     private static void processReferenceRecords(
             String objName,
             List<Map<String, Object>> records,
@@ -1596,6 +1648,7 @@ global with sharing class LoanProductConfigService {
      * matches the snapshot record (flat fields + container children).
      * Returns null if no candidate matches.
      */
+    @TestVisible
     private static Id pickMatchingCandidate(
             String objName,
             Map<String, Object> snapshotRecord,
@@ -1637,6 +1690,7 @@ global with sharing class LoanProductConfigService {
      * Lookup fields are compared against `idRemap[snapshotValue]` since the
      * target stores a target-org Id while the snapshot stores a source-org Id.
      */
+    @TestVisible
     private static Boolean fieldsEqual(
             Map<String, Object> snapshotFields,
             SObject target,
@@ -1698,6 +1752,7 @@ global with sharing class LoanProductConfigService {
     }
 
     /** Treat null, "", and whitespace-only strings as absent. */
+    @TestVisible
     private static Boolean isAbsent(Object v) {
         if (v == null) return true;
         if (v instanceof String && String.isBlank((String) v)) return true;
@@ -1705,6 +1760,7 @@ global with sharing class LoanProductConfigService {
     }
 
     /** Numeric-tolerant, type-coerced equality. */
+    @TestVisible
     private static Boolean valuesEqual(Object a, Object b) {
         if (isAbsent(a) && isAbsent(b)) return true;
         // Salesforce checkbox semantics: an unset Boolean field round-trips as
@@ -1740,6 +1796,7 @@ global with sharing class LoanProductConfigService {
      * `targetChildren` is a list of indexed-populated maps (bare-name keyed)
      * so we can read fields by their bare api name regardless of namespace.
      */
+    @TestVisible
     private static Boolean containerChildrenEqual(
             String containerObj,
             Map<String, Object> snapshotContainer,
@@ -1803,6 +1860,7 @@ global with sharing class LoanProductConfigService {
      * Returns `{name}-Copy-N` for the smallest N (>=1) not already present on
      * any target record. Falls back to `{name}-Copy-{epoch}` if the SOQL fails.
      */
+    @TestVisible
     private static String nextAvailableSuffixedName(String objName, String baseName) {
         String namePattern = baseName + '-Copy-%';
         Set<Integer> usedSuffixes = new Set<Integer>();
@@ -1940,12 +1998,13 @@ global with sharing class LoanProductConfigService {
 
     /**
      * Schema.getGlobalDescribe() keys SObjects by their fully-qualified API name,
-     * which for managed-package types means `w22loan__Foo__c` even though our
-     * snapshots use the bare `Foo__c`. This resolver tries the bare name first
-     * and then probable namespace prefixes so deploy can build SObjects without
-     * the caller knowing which org the package landed in.
+     * such as `loan__Foo__c` or `w22loan__Foo__c`, even though snapshots use the
+     * bare `Foo__c`. This resolver discovers the installed lending namespace at
+     * runtime so deploy can build SObjects without the caller knowing which org
+     * or lending package variant it is running against.
      */
     private static Map<String, Schema.SObjectType> sobjectTypeCache = null;
+    @TestVisible
     private static Schema.SObjectType resolveSObjectType(String objName) {
         if (sobjectTypeCache == null) sobjectTypeCache = Schema.getGlobalDescribe();
         if (sobjectTypeCache.containsKey(objName)) return sobjectTypeCache.get(objName);
@@ -1971,10 +2030,12 @@ global with sharing class LoanProductConfigService {
      * Builds an SObject of the given type, populating fields from the source
      * map. For any field listed in `lookupFields`, the value is treated as a
      * source-org Id and remapped via `idRemap` (skipped if not in the map).
-     * Field names are tried bare first, then with `w22loan__` / `clcommon__`
-     * prefixes — managed-package fields on installed objects come back with
-     * the namespace prefix and `SObject.put()` rejects the bare name.
+     * Field names are tried bare first, then with the runtime-discovered lending
+     * namespace and the Common namespace. Managed-package fields on installed
+     * objects come back with a namespace prefix and `SObject.put()` rejects the
+     * bare name.
      */
+    @TestVisible
     private static SObject buildSObject(
             String objName,
             Map<String, Object> fields,
@@ -2025,9 +2086,10 @@ global with sharing class LoanProductConfigService {
 
     /**
      * Returns the canonical field name for `apiName` on the given describe map,
-     * trying bare → `w22loan__` → `clcommon__`. Returns null if no variant
-     * matches a real field (caller should skip).
+     * trying the bare name and every runtime-discovered relevant namespace.
+     * Returns null if no variant matches a real field (caller should skip).
      */
+    @TestVisible
     private static String resolveFieldName(
             Map<String, Schema.SObjectField> describeFieldMap, String apiName) {
         String lower = apiName.toLowerCase();
@@ -2070,6 +2132,7 @@ global with sharing class LoanProductConfigService {
      * typed `Map<String, List<Map<String, Object>>>` the deploy pipeline
      * expects. Skips entries whose values aren't list-of-map.
      */
+    @TestVisible
     private static Map<String, List<Map<String, Object>>> normalizeListOfMapMap(
             Map<String, Object> raw) {
         Map<String, List<Map<String, Object>>> out =
@@ -2094,6 +2157,7 @@ global with sharing class LoanProductConfigService {
      * `JSON.deserializeUntyped` into a typed map. Skips entries whose values
      * aren't maps.
      */
+    @TestVisible
     private static Map<String, Map<String, Object>> normalizeMapOfMap(
             Map<String, Object> raw) {
         Map<String, Map<String, Object>> out = new Map<String, Map<String, Object>>();

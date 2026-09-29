@@ -4,42 +4,42 @@
     <masterLabel>Config MCP</masterLabel>
     <tools>
         <apiDefinition>
-            <apiIdentifier>aa:apex-w22loan__GetProductAction</apiIdentifier>
+            <apiIdentifier>aa:apex-win22__GetProductAction</apiIdentifier>
             <apiSource>API_CATALOG</apiSource>
-            <operation>w22loan__GetProductAction</operation>
+            <operation>win22__GetProductAction</operation>
         </apiDefinition>
         <descriptionOverride>Fetch the full configuration graph for a single loan product including all related objects (Fee_Set__c, Delinquency_Set__c, Floating_Rate_Index__c, MF_Account__c, etc.) with their nested children, every child relationship (accounting setup, provisioning, commission hierarchy), and a top-level fees map for Fee__c lookups. Call this after list_products to inspect a specific product in detail.</descriptionOverride>
-        <toolName>w22loan_GetProductActionapex_w22loan_GetProductAction</toolName>
-        <toolTitle>w22loan__GetProductAction</toolTitle>
+        <toolName>win22_GetProductActionapex_win22_GetProductAction</toolName>
+        <toolTitle>win22__GetProductAction</toolTitle>
     </tools>
     <tools>
         <apiDefinition>
-            <apiIdentifier>aa:apex-w22loan__DiffRecordAction</apiIdentifier>
+            <apiIdentifier>aa:apex-win22__DiffRecordAction</apiIdentifier>
             <apiSource>API_CATALOG</apiSource>
-            <operation>w22loan__DiffRecordAction</operation>
+            <operation>win22__DiffRecordAction</operation>
         </apiDefinition>
         <descriptionOverride>Diagnostic tool for understanding deploy equality. Returns a per-candidate mismatch report explaining why a record would or would not match against itself and other records sharing its Name. Useful when debugging why a deploy is producing &quot;&lt;name&gt;-Copy-N&quot; renames for records that look identical to a human.</descriptionOverride>
-        <toolName>w22loan_DiffRecordActionapex_w22loan_DiffRecordAction</toolName>
-        <toolTitle>w22loan__DiffRecordAction</toolTitle>
+        <toolName>win22_DiffRecordActionapex_win22_DiffRecordAction</toolName>
+        <toolTitle>win22__DiffRecordAction</toolTitle>
     </tools>
     <tools>
         <apiDefinition>
-            <apiIdentifier>aa:apex-w22loan__DeployProductAction</apiIdentifier>
+            <apiIdentifier>aa:apex-win22__DeployProductAction</apiIdentifier>
             <apiSource>API_CATALOG</apiSource>
-            <operation>w22loan__DeployProductAction</operation>
+            <operation>win22__DeployProductAction</operation>
         </apiDefinition>
         <descriptionOverride>Deploy a (possibly edited) Golden Copy product graph to the connected Salesforce org. Reference records (Fee_Set__c, Delinquency_Set__c, MF_Account__c, MF_Account_Type__c, etc.) are matched by Name and full content — reused if identical, renamed to &quot;&lt;name&gt;-Copy-N&quot; if a Name collides with different content, or freshly inserted when no match exists. The new Loan_Product__c Id is returned on success. THIS IS A DESTRUCTIVE OPERATION that creates records in the target org; prompt the user for confirmation before invoking.</descriptionOverride>
-        <toolName>w22loan_DeployProductActionapex_w22loan_DeployProductAction</toolName>
-        <toolTitle>w22loan__DeployProductAction</toolTitle>
+        <toolName>win22_DeployProductActionapex_win22_DeployProductAction</toolName>
+        <toolTitle>win22__DeployProductAction</toolTitle>
     </tools>
     <tools>
         <apiDefinition>
-            <apiIdentifier>aa:apex-w22loan__ListProductsAction</apiIdentifier>
+            <apiIdentifier>aa:apex-win22__ListProductsAction</apiIdentifier>
             <apiSource>API_CATALOG</apiSource>
-            <operation>w22loan__ListProductsAction</operation>
+            <operation>win22__ListProductsAction</operation>
         </apiDefinition>
         <descriptionOverride>Returns every Loan_Product__c in the connected Salesforce org as a lightweight list (Id, Name, Product Type, Status). Use this to discover product Ids before calling get_product.</descriptionOverride>
-        <toolName>w22loan_ListProductsActionapex_w22loan_ListProductsAction</toolName>
-        <toolTitle>w22loan__ListProductsAction</toolTitle>
+        <toolName>win22_ListProductsActionapex_win22_ListProductsAction</toolName>
+        <toolTitle>win22__ListProductsAction</toolTitle>
     </tools>
 </McpServerDefinition>

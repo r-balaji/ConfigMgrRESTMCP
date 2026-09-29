@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
+        <members>ConfigManagerTestDataFactory</members>
         <members>DeployProductAction</members>
         <members>DiffRecordAction</members>
         <members>GetProductAction</members>
         <members>ListProductsAction</members>
-        <members>LoanProductConfigService</members>
-        <members>ConfigManagerTestDataFactory</members>
         <members>LoanProductConfigActionsTest</members>
         <members>LoanProductConfigInternalsTest</members>
+        <members>LoanProductConfigService</members>
         <members>LoanProductConfigServiceTest</members>
         <name>ApexClass</name>
     </types>
@@ -17,24 +17,8 @@
         <name>ExternalClientApplication</name>
     </types>
     <types>
-        <members>Symphonix_MCP_plcy</members>
-        <name>ExtlClntAppConfigurablePolicies</name>
-    </types>
-    <types>
-        <members>Symphonix_MCP_oauthPlcy</members>
-        <name>ExtlClntAppOauthConfigurablePolicies</name>
-    </types>
-    <types>
-        <members>Symphonix_MCP_oauthSecurity</members>
-        <name>ExtlClntAppOauthSecuritySettings</name>
-    </types>
-    <types>
         <members>Symphonix_MCP_oauth</members>
         <name>ExtlClntAppOauthSettings</name>
-    </types>
-    <types>
-        <members>ConfigMCP</members>
-        <name>McpServerDefinition</name>
     </types>
     <version>66.0</version>
 </Package>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ExtlClntAppOauthSecuritySettings xmlns="http://soap.sforce.com/2006/04/metadata">
-    <externalClientApplication>w22loan__Symphonix_MCP</externalClientApplication>
+    <externalClientApplication>win22__Symphonix_MCP</externalClientApplication>
     <label>Symphonix_MCP_oauthSecurity</label>
 </ExtlClntAppOauthSecuritySettings>

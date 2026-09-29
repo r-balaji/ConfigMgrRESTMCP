@@ -2,11 +2,26 @@
   "packageDirectories": [
     {
       "path": "force-app",
-      "default": true
+      "default": true,
+      "package": "MyConnectedAppPackage",
+      "versionName": "Config Manager 1.2",
+      "versionNumber": "1.2.0.NEXT",
+      "ancestorVersion": "1.1.0.1",
+      "definitionFile": "config/project-scratch-def.json"
+    },
+    {
+      "path": "post-install",
+      "default": false
     }
   ],
   "name": "ConfigManager-SF",
-  "namespace": "",
+  "namespace": "win22",
   "sfdcLoginUrl": "https://login.salesforce.com",
-  "sourceApiVersion": "66.0"
+  "sourceApiVersion": "66.0",
+  "packageAliases": {
+    "MyConnectedAppPackage": "0Hog50000000gs5CAA",
+    "MyConnectedAppPackage@1.1.0-1": "04tg50000007eWzAAI",
+    "MyConnectedAppPackage@1.2.0-1": "04tg5000000EmhVAAS",
+    "MyConnectedAppPackage@1.2.0-2": "04tg5000000Emj7AAC"
+  }
 }
